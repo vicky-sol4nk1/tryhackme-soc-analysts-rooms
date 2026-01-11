@@ -127,9 +127,11 @@ ans:THM{looks_like_webshell_via_old_exchange}
     Do not skip the alert - investigate what you can and report the issue to your L2 on shift or SOC engineer.
 
 Q.1 Should you first try to contact your manager in case of a critical threat (Yea/Nay)?
+
 Ans:nay
 
 q.2 Should you immediately contact your L2 if you think you missed the attack (Yea/Nay)?
+
 ans:yea
 
  Task 6 Conclusion
