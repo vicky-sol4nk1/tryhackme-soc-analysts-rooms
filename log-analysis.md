@@ -169,5 +169,107 @@ In real SOC work (SIEM like Splunk/Elastic/QRadar), you correlate these — e.g.
   - Set up **alerts** (e.g., notify on multiple failed logins)
   - Visualize trends (e.g., login spikes)
 
+ the **most common and important log fields** that SOC analysts (L1/L2) usually see and work with daily in SIEMs, EDR tools, threat hunting, and log analysis. These fields appear across different log types (Windows Event Logs, Sysmon, firewall, proxy, DNS, Syslog, CEF, JSON-normalized logs, etc.).
+
+Not every log has **all** of these — it depends on the source and format — but modern SIEMs (Splunk, Elastic, QRadar, Sentinel, etc.) try to **normalize** them into consistent fields.
+
+### Universal / Almost Always Present Fields (in normalized SIEM / JSON logs)
+
+These appear in nearly every modern log source after parsing/normalization:
+
+- **timestamp** / **@timestamp** / **UtcTime** / **EventTime** — When the event happened (usually in UTC)
+- **hostname** / **host** / **computer** / **dhost** — The machine / device that generated the log
+- **source_ip** / **src** / **saddr** — Source IP address
+- **dest_ip** / **dst** / **daddr** — Destination IP address
+- **source_port** / **sport** — Source port
+- **dest_port** / **dport** — Destination port
+- **protocol** / **proto** / **app** / **ApplicationProtocol** — TCP/UDP/ICMP/HTTP/etc.
+- **event_id** / **EventID** / **signature_id** / **SignatureID** — Unique numeric ID for the event type (e.g., 4624, Sysmon 1)
+- **event_type** / **category** / **cat** — Broad category (e.g., authentication, process, network)
+- **action** / **act** / **DeviceAction** — What happened (allow, deny, create, success, failure)
+- **severity** / **Severity** / **level** — 1–10 scale (info=3, warning=4, error=5–7, critical=8–10 in CEF)
+- **user** / **suser** / **account_name** / **TargetUserName** — Username involved
+- **log_source** / **source** / **channel** — Where it came from (Security, Sysmon/Operational, firewall, etc.)
+- **message** / **msg** — Human-readable description or full raw message
+
+### Windows-Specific Common Fields (Security + System + Application Logs)
+
+From Event Viewer / .evtx (often parsed to XML/JSON):
+
+- **EventRecordID** — Unique ID within the log channel
+- **ProviderName** / **SourceName** — e.g., Microsoft-Windows-Security-Auditing
+- **Level** — Informational, Warning, Error, Critical
+- **Task** / **Opcode** — Sub-category within EventID
+- **Keywords** — Bitmask flags (e.g., Audit Success/Failure)
+- **LogonType** — 2=Interactive, 3=Network, 10=RDP (very important in 4624/4625)
+- **AuthenticationPackageName** — NTLM, Kerberos, Negotiate
+- **LogonProcessName** — Advapi, Kerberos, etc.
+- **IpAddress** / **WorkstationName** — Where the logon came from
+- **TargetDomainName** / **TargetUserSid** — Domain and SID of the account
+- **ProcessName** / **ProcessId** — Process that triggered the event
+
+### Sysmon-Specific High-Value Fields (Event ID 1, 3, 7, 11, 22, etc.)
+
+Sysmon is one of the richest sources — these fields appear in **almost every** useful Sysmon event:
+
+- **Image** / **process_path** — Full path of the executable (e.g., C:\Windows\System32\cmd.exe)
+- **CommandLine** — Full arguments/command line
+- **ParentImage** — Path of the parent process
+- **ParentCommandLine** — Parent's full command line
+- **ProcessGuid** / **ParentProcessGuid** — Unique GUID to track process lineage (better than PID)
+- **ProcessId** / **ParentProcessId**
+- **Hashes** — MD5,SHA1,SHA256,IMPHASH of the file
+- **OriginalFileName** — PE header original name (helps detect renamed malware)
+- **User** — User context under which process ran
+- **IntegrityLevel** — High / Medium / Low
+- **Initiated** / **Protocol** (Event ID 3) — True/False if connection initiated outbound
+- **TargetFilename** (Event ID 11) — File created/modified
+- **QueryName** / **QueryResults** (Event ID 22 – DNS query)
+
+### Network / Firewall / Proxy / DNS Common Fields
+
+- **bytes_in** / **bytes_out** / **sent** / **received** — Data volume transferred
+- **packets** — Number of packets
+- **duration** — Connection duration
+- **url** / **http_url** / **cs-uri** — Full requested URL (proxy/web logs)
+- **http_method** — GET/POST/HEAD
+- **user_agent** / **cs-user-agent** — Browser/agent string
+- **status_code** / **sc-status** — HTTP response code (200, 404, 500)
+- **domain** / **query** — DNS queried domain
+- **dns_response** / **answer** — Resolved IP(s)
+- **rule** / **policy** — Firewall/proxy rule ID that matched
+- **geo_country** / **src_geo** — GeoIP lookup of source IP (often enriched in SIEM)
+
+### CEF (Common Event Format) Standard Extension Fields
+
+Many devices send in CEF — these are the most frequently used keys in the extension part:
+
+- **src** = source IP
+- **dst** = destination IP
+- **spt** = source port
+- **dpt** = destination port
+- **act** = action (allow/deny/block)
+- **app** = application/protocol
+- **cs1** / **cs2** / **cs3** ... — Custom string fields (vendor-specific)
+- **cn1** / **cn2** — Custom number fields
+- **msg** = message/description
+- **rt** = receipt time
+- **fname** = file name
+- **fileHash** / **fileHashSha256** — File hashes
+- **reason** — Why action was taken
+
+### Quick Cheat Sheet – Most Hunted Fields in SOC (Daily Use)
+
+| Priority | Field Name(s)                  | Why It's Critical                              | Common In                  |
+|----------|--------------------------------|------------------------------------------------|----------------------------|
+| ★★★★★    | timestamp, hostname, event_id  | Time + machine + what happened                 | All logs                   |
+| ★★★★★    | src / dst IP + ports           | Network who → who                              | Network, firewall, Sysmon 3|
+| ★★★★★    | user / suser / account         | Who did it                                     | Security, Sysmon           |
+| ★★★★★    | Image / Process / CommandLine  | What exactly ran (with args!)                  | Sysmon 1, Process Creation |
+| ★★★★☆    | ParentImage / ParentCommandLine| Attack chain / LOLBin abuse                    | Sysmon                     |
+| ★★★★☆    | url / domain / query           | Web / DNS / C2 / phishing                      | Proxy, DNS, web server     |
+| ★★★★☆    | action / status / result       | Success/failure/allow/deny                     | Almost all                 |
+| ★★★☆☆    | hashes (SHA256, IMPHASH)       | File identity / malware matching               | Sysmon                     |
+| ★★★☆☆    | bytes / packets / duration     | Exfil / beaconing volume                       | Firewall, proxy            |
 
 
