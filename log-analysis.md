@@ -170,6 +170,4 @@ In real SOC work (SIEM like Splunk/Elastic/QRadar), you correlate these — e.g.
   - Visualize trends (e.g., login spikes)
 
 
-Watch previous days (1–10) in the playlist for foundational topics (networking, OS basics, threats, etc.). Day 11 builds toward SIEM & monitoring in later sessions.
 
-If you want notes expanded on a specific part (e.g., more on Event IDs, Loggly queries, or comparison with Splunk/ELK), let me know! Keep grinding — you're on Day 11 of becoming an L1 SOC pro. 💪
